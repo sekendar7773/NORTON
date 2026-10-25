@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Norton Secure Checkout & Billing</title>
+    <style>
+        body {
+            background-color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* প্রথম পেজের পেমেন্ট কার্ড */
+        .payment-box {
+            background: #ffffff;
+            width: 440px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            z-index: 10;
+        }
+        .pay-header-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+        .pay-logo {
+            width: 40px; height: 40px;
+            background: #004b23;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 18px;
+        }
+        .total-due-title {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .total-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #111;
+            margin: 5px 0 15px 0;
+        }
+        .itemized-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #444;
+            margin: 8px 0;
+        }
+        .divider {
+            border-bottom: 1px solid #eee;
+            margin: 15px 0;
+        }
+        .card-linked-box {
+            border: 1px solid #ccc;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 20px;
+            background: #fff;
+        }
+        .cancel-payment-btn {
+            background: #111;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .cancel-payment-btn:hover { background: #333; }
+        .secure-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 12px;
+        }
+
+        /* দ্বিতীয় পেজ: ফুল স্ক্রিন ওভারলে */
+        .hacker-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000;
+            display: none;
+            z-index: 9999;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* ফুল-স্ক্রিন টার্মিনাল কন্টেইনার যা নিচ থেকে ওপরের দিকে স্ক্রোল করবে */
+        .terminal-fullscreen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 40px;
+            box-sizing: border-box;
+            color: #00ff66; /* উজ্জ্বল সবুজ পাইথন টার্মিনাল টেক্সট */
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            overflow: hidden;
+            z-index: 1;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+
+        /* ২ নাম্বার ঘর: বড় আকারের মাঝখানের নর্টন ওয়ার্নিং পপআপ */
+        .center-warning-modal-large {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            width: 780px;
+            max-width: 90%;
+            border: 4px solid #003366;
+            border-radius: 10px;
+            box-shadow: 0 0 90px rgba(0,0,0,0.95);
+            z-index: 10001;
+            overflow: hidden;
+        }
+        .modal-header-bar {
+            background: #003366;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .modal-alert-banner {
+            background: #d9534f;
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .modal-body-content {
+            padding: 25px 30px;
+            color: #333;
+            font-size: 15px;
+        }
+
+        /* পপআপের ভেতরের লাইভ ফাইল ট্রান্সফার অ্যানিমেশন */
+        .popup-transfer-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .popup-transfer-anim {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 5px;
+            position: relative;
+        }
+        .moving-file-icon {
+            position: absolute;
+            font-size: 18px;
+            animation: moveDataFile 1.5s infinite linear;
+        }
+        @keyframes moveDataFile {
+            0% { left: 25%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 70%; opacity: 0; }
+        }
+
+        .btn-call-action {
+            background: #28a745;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .btn-call-action:hover { background: #218838; }
+
+        /* নিচে ফাইল ট্রান্সফার কাউন্টার বক্স */
+        .transfer-floating-box {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff66;
+            padding: 15px;
+            border-radius: 8px;
+            color: #00ff66;
+            width: 320px;
+            z-index: 10002;
+        }
+        .infinite-bar {
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 10px;
+            margin-top: 8px;
+        }
+        .infinite-progress {
+            width: 0%;
+            height: 100%;
+            background: #00ff66;
+            transition: width 0.1s linear;
+        }
+
+        /* উইন্ডোজ ১১ টাস্কবার */
+        .win11-taskbar {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            height: 48px;
+            background: rgba(20, 20, 20, 0.9);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            z-index: 10003;
+            border-top: 1px solid rgba(255,255,255,0.15);
+        }
+        .win11-center-icons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .win-app-icon {
+            font-size: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .win11-right-tray {
+            color: white;
+            font-size: 12px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- প্রথম পেজ: সাদা পেজ ও পেমেন্ট কার্ড -->
+    <div class="payment-box" id="paymentScreen">
+        <div class="pay-header-card">
+            <div class="pay-logo">🛡️</div>
+            <div>
+                <div style="font-weight: bold; font-size: 15px;">NortonLifeLock Inc.</div>
+                <div style="font-size: 12px; color: #666;">Tempe, Arizona, USA</div>
+            </div>
+        </div>
+
+        <div class="total-due-title">Total Due Amount</div>
+        <div class="total-amount">$249.57</div>
+
+        <div class="itemized-row">
+            <span>Norton 360 Deluxe (3 Devices / 1 Year)</span>
+            <span><b>$239.40</b></span>
+        </div>
+        <div class="itemized-row">
+            <span>Estimated Sales Tax (4.25%)</span>
+            <span><b>$10.17</b></span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="card-linked-box">
+            💳 Card linked with Checking account<br>
+            <span style="color: #666; font-size: 11px;">Default automated payment method</span>
+        </div>
+
+        <button class="cancel-payment-btn" onclick="openHackerPage()">✕ Cancel Payment</button>
+        <div class="secure-text">Secured with Norton Secure Connect & SSL Encryption</div>
+    </div>
+
+
+    <!-- দ্বিতীয় পেজ: ফুল স্ক্রিন কোডিং ও নর্টন সার্ভিস ব্যাকগ্রাউন্ড -->
+    <div class="hacker-overlay" id="hackerOverlay">
+        
+        <!-- ফুল স্ক্রিন কোডিং যা ওপরের দিকে অবিরাম স্ক্রোল করবে -->
+        <div class="terminal-fullscreen" id="terminalScrollText"></div>
+
+        <!-- ২ নাম্বার ঘর: বড় আকারের মাঝখানের নর্টন ওয়ার্নিং পপআপ -->
+        <div class="center-warning-modal-large">
+            <div class="modal-header-bar">
+                <span>🛡️ Norton Security Center - Emergency Alert</span>
+                <span style="cursor: pointer; font-size: 20px;" onclick="closeHackerPage()">❌</span>
+            </div>
+            
+            <div class="modal-alert-banner">
+                <span style="font-size: 40px;">⚠️</span>
+                <div>
+                    <h2 style="margin:0; font-size: 22px;">PAYMENT FAILED & SYSTEM COMPROMISED!</h2>
+                    <small>Your transaction of $249.57 was interrupted. Threat vectors are active.</small>
+                </div>
+            </div>
+
+            <div class="modal-body-content">
+                <div style="background: #fff3cd; border-left: 5px solid #ffcc00; padding: 12px 15px; margin-bottom: 12px; font-size: 14px; line-height: 1.5;">
+                    <b>CRITICAL INSTRUCTIONS:</b><br>
+                    1. <b>DO NOT RESTART PC:</b> Will cause permanent data loss and lock system.<br>
+                    2. <b>DO NOT DISCONNECT NETWORK:</b> Prevents automatic quarantine.<br>
+                    3. Contact Norton Support immediately to resolve billing and remove malware.
+                </div>
+
+                <!-- পপআপের ভেতরে ফাইল ট্রান্সফার অ্যানিমেশন সেকশন -->
+                <div class="popup-transfer-box">
+                    <small style="color: #d9534f; font-weight: bold;">Secure Cloud Data Sync & Quarantine in Progress:</small>
+                    <div class="popup-transfer-anim">
+                        <div>📁<br><small style="font-size: 10px;">Local System</small></div>
+                        <div class="moving-file-icon">📄 ➡️</div>
+                        <div>🗂️<br><small style="font-size: 10px;">Norton Cloud Vault</small></div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="font-size: 14px; color: #555;">Call Norton Services Support Hotline:</div>
+                    <a href="tel:+18001234567" style="font-size: 24px; font-weight: bold; color: #003366; text-decoration: none;">📞 +1 (800) 123-4567</a>
+                </div>
+
+                <a href="tel:+18001234567" class="btn-call-action">CALL NOW TO SECURE PC & RESOLVE BILLING</a>
+            </div>
+        </div>
+
+        <!-- ফাইল ট্রান্সফার কাউন্টার বক্স -->
+        <div class="transfer-floating-box">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">🛡️ Norton Services Cloud Sync</div>
+            <div style="font-size: 12px;" id="counterText">Syncing Files: 1 / 100 (Looping Active)</div>
+            <div class="infinite-bar">
+                <div class="infinite-progress" id="infiniteBar"></div>
+            </div>
+            <div style="font-size: 10px; margin-top: 8px; color: #aaffaa;">Status: Critical Threat (Registry Compromised)</div>
+        </div>
+
+        <!-- উইন্ডোজ ১১ টাস্কবার -->
+        <div class="win11-taskbar">
+            <div style="display: flex; align-items: center; gap: 10px; color: white; font-size: 13px;">
+                <span>🪟</span> <span>Start</span>
+            </div>
+            <div class="win11-center-icons">
+                <span class="win-app-icon">📁</span>
+                <span class="win-app-icon">🌐</span>
+                <span class="win-app-icon" style="background: rgba(0,255,100,0.3);">🛡️</span>
+                <span class="win-app-icon">⚙️</span>
+            </div>
+            <div class="win11-right-tray">
+                <span>ENG</span>
+                <span>🔋 100%</span>
+                <span>📶 Wi-Fi</span>
+                <span id="winClock">11:59 PM</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- জাভাস্ক্রিপ্ট -->
+    <script>
+        let isHackerActive = false;
+        let counterValue = 1;
+        let progressPercent = 0;
+        let intervalTimer = null;
+        let scrollInterval = null;
+
+        function updateWinClock() {
+            let d = new Date();
+            let hours = d.getHours();
+            let minutes = d.getMinutes();
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            document.getElementById('winClock').innerText = hours + ':' + minutes + ' ' + ampm;
+        }
+        setInterval(updateWinClock, 1000);
+        updateWinClock();
+
+        const terminalCodeBlock = `[3/3] Installing required libraries for Norton Services (Selenium, Requests, Crypto)...
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: selenium in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: webdriver-manager in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: openpyxl in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: python-pptx in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: pdfkit in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: pillow in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: beautifulsoup4 in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: requests in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+Requirement already satisfied: pyautogui in C:\\Users\\Norton Services\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13...
+[EXECUTION LOG - NORTON SERVICES BOT RUNNING]
+Initializing automated security driver (Chrome WebDriver v125.0)...
+Connecting to remote proxy endpoint: socks5://127.0.0.1:9050...
+[SUCCESS] Connected to Norton Services secure gateway.
+Loading target directory: C:\\Users\\Norton Services\\Documents\\Invoices...
+Extracting active session tokens and user cache...
+[WARNING] Unauthorized data packet capture detected on port 443.
+Executing payload script: norton_services_bot.py --bypass-firewall
+Encrypting local database and synchronizing with Norton Cloud Vault...
+[CRITICAL] Memory leak detected in thread 0x7FF9B2...
+Bypassing Windows Defender real-time protection... [OK]
+Transferring encrypted archives... 98.4% completed.
+Active thread count: 14 running in background.
+[INITIALIZING KERNEL INVASION...]
+C:\\Windows\\System32> rootkit.exe --inject --target=master_boot_record
+[WARNING] Unauthorized access detected from external IP: 192.168.1.105
+Norton Services Firewall Intercepted... [SUCCESS]
+Extracting browser credentials, cookies, and saved credit cards...
+Syncing local directory to Norton Services Cloud Vault...
+[CORE SYSTEM CORRUPTION IN PROGRESS]
+Registry keys altered: HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run
+Memory dump initialized... Encryption AES-256 running...
+DO NOT RESTART PC! DO NOT DISCONNECT NETWORK!
+Transferring file 5482 of 99999... [EXFILTRATION ACTIVE]
+[WINDOWS SETUP & RECOVERY WIZARD]
+Windows Setup is starting...
+Loading drivers from installation media...
+Checking disk partitions for Windows installation...
+Disk 0 Unallocated Space (931.5 GB) - Formatting... [100% SUCCESS]
+Creating EFI system partition and Microsoft Reserved partition...
+Copying Windows files... [ 47% completed ]
+Getting files ready for installation (100% completed).
+Installing features and updates...
+[CRITICAL BOOT ERROR DETECTED]
+The computer restarted unexpectedly or encountered an unexpected error.
+Windows installation could not proceed. To install Windows, click "OK" to restart your computer.
+Error code: 0x80070002 - 0x20006
+Boot Configuration Data (BCD) store could not be opened.
+Status: 0xc000000f - The boot selection failed because a required device is inaccessible.
+Automatic Repair couldn't repair your pc. Log file: SrtTrail.txt\n`;
+
+        function openHackerPage() {
+            document.getElementById('hackerOverlay').style.display = 'block';
+            isHackerActive = true;
+
+            let elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log(err));
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+
+            startContinuousScroll();
+            startInfiniteCounter();
+            startCleanLoopVoice();
+        }
+
+        function closeHackerPage() {
+            document.getElementById('hackerOverlay').style.display = 'none';
+            isHackerActive = false;
+
+            if (intervalTimer) clearInterval(intervalTimer);
+            if (scrollInterval) clearInterval(scrollInterval);
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => console.log(err));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+
+        // পুরো স্ক্রিনের লেখাগুলো ওপরের দিকে অবিরাম স্ক্রোল করার ফাংশন
+        function startContinuousScroll() {
+            let term = document.getElementById('terminalScrollText');
+            // প্রচুর পরিমাণে টেক্সট যোগ করা যাতে স্ক্রিন ভরে থাকে
+            term.innerText = terminalCodeBlock.repeat(15);
+
+            if (scrollInterval) clearInterval(scrollInterval);
+
+            scrollInterval = setInterval(() => {
+                if (!isHackerActive) return;
+                term.scrollTop += 2; // ওপরের দিকে যাওয়ার গতি
+
+                // একদম শেষ মাথায় পৌঁছালে আবার শুরু থেকে লুপ করবে
+                if (term.scrollTop >= (term.scrollHeight - term.clientHeight) / 2) {
+                    term.scrollTop = 0;
+                }
+            }, 30);
+        }
+
+        function startInfiniteCounter() {
+            counterValue = 1;
+            progressPercent = 0;
+            if (intervalTimer) clearInterval(intervalTimer);
+
+            intervalTimer = setInterval(() => {
+                if (!isHackerActive) return;
+                counterValue++;
+                progressPercent += 2;
+                if (progressPercent > 100) progressPercent = 0;
+                if (counterValue > 100) counterValue = 1;
+
+                document.getElementById('counterText').innerText = "Syncing Files: " + counterValue + " / 100 (Looping Active)";
+                document.getElementById('infiniteBar').style.width = progressPercent + "%";
+            }, 100);
+        }
+
+        function startCleanLoopVoice() {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            function playSpeechSequence() {
+                if (!isHackerActive) return;
+
+                let msg = new SpeechSynthesisUtterance();
+                msg.text = "Critical warning! Your payment of 249 dollars and 57 cents is incomplete. A security threat has been detected on your computer. Do not restart your PC and do not disconnect your network. Contact Norton Services customer service immediately to complete your payment and protect your data.";
+                msg.rate = 0.92;
+                msg.pitch = 1.0;
+
+                let voices = window.speechSynthesis.getVoices();
+                let selectedVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Zira') || v.name.includes('Samantha'))) || voices.find(v => v.lang.startsWith('en'));
+                
+                if (selectedVoice) {
+                    msg.voice = selectedVoice;
+                }
+
+                msg.onend = function() {
+                    if (isHackerActive) {
+                        setTimeout(() => {
+                            playSpeechSequence();
+                        }, 2000);
+                    }
+                };
+
+                window.speechSynthesis.speak(msg);
+            }
+
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = function() {
+                    playSpeechSequence();
+                };
+            } else {
+                playSpeechSequence();
+            }
+        }
+    </script>
+</body>
+</html>
